@@ -11,9 +11,9 @@ from dotenv import load_dotenv
 script_dir = os.path.dirname(os.path.abspath(__file__))
 log_file_path = os.path.join(script_dir, "email_reminder.log")
 
-# Configure logging
+# Configure Logging
 logging.basicConfig(
-    level=logging.INFO,  # Change to DEBUG for more details
+    level=logging.INFO,  # Change to DEBUG for more detailed logs
     format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[
         logging.FileHandler(log_file_path, mode='a'),  # Append mode
@@ -23,13 +23,13 @@ logging.basicConfig(
 
 logging.info("Script started.")
 
-# Remove or comment out this line so GitHub Actions env vars aren't cleared:
+# Do NOT clear environment variables here or you'll break GitHub Actions
 # os.environ.clear()
 
-# Load environment variables from a .env file (optional if also using GitHub Secrets)
+# Load environment variables from .env file if using locally (optional)
 load_dotenv()
 
-# Retrieve SMTP/Email details from environment
+# Retrieve SMTP server details
 SMTP_SERVER = os.getenv("SMTP_SERVER")
 SMTP_PORT = os.getenv("SMTP_PORT")
 EMAIL_ADDRESS = os.getenv("EMAIL_ADDRESS")
@@ -48,8 +48,8 @@ for var_name, var_value in [
     if not var_value:
         missing_smtp_vars.append(var_name)
 
+# This MUST NOT contain "***" anywhere
 if missing_smtp_vars:
-    # Use a valid f-string without any masked `***`
     logging.error(f"Missing SMTP environment variables: {
                   ', '.join(missing_smtp_vars)}.")
     exit(1)
@@ -92,7 +92,7 @@ def send_email_reminder(tenant):
     """
     global success_count, failure_count, failed_tenants
     try:
-        # Validate required fields
+        # Validate required tenant fields
         required_fields = ["email", "name",
                            "payment_amount", "payment_description"]
         missing_fields = [
@@ -108,7 +108,7 @@ def send_email_reminder(tenant):
             })
             return
 
-        # Ensure payment_amount can be converted to float
+        # Ensure payment_amount is a float
         try:
             payment_amount = float(tenant['payment_amount'])
         except (ValueError, TypeError):
@@ -126,7 +126,7 @@ def send_email_reminder(tenant):
 
         subject = "Rent Payment Reminder"
 
-        # HTML body
+        # HTML email body
         body = f"""\
         <html>
         <head>
@@ -183,7 +183,7 @@ def send_email_reminder(tenant):
         # Attach the HTML content
         msg.attach(MIMEText(body, "html"))
 
-        # Send email
+        # Send the email
         try:
             with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
                 server.starttls()
@@ -248,7 +248,7 @@ Your Automated Email System
             logging.error(f"Log file not found at {
                           log_file_path}. Cannot attach to log email.")
 
-        # Send log email
+        # Send the log email
         with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
             server.starttls()
             server.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
