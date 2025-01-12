@@ -24,10 +24,10 @@ logging.basicConfig(
 
 logging.info("Script started.")
 
-# IMPORTANT: Removed or commented out the line that clears environment variables
+# IMPORTANT: Removed or commented out the line that clears all environment variables
 # os.environ.clear()
 
-# Load environment variables from .env file (optional for GitHub Actions)
+# Load environment variables from .env file (only necessary if you're also using a local .env)
 load_dotenv()
 
 # Retrieve SMTP server details from environment variables
@@ -49,6 +49,7 @@ for var_name, var_value in [
     if not var_value:
         missing_smtp_vars.append(var_name)
 
+# Fixed syntax in the f-string below
 if missing_smtp_vars:
     logging.error(f"Missing SMTP environment variables: {
                   ', '.join(missing_smtp_vars)}.")
@@ -73,6 +74,7 @@ else:
 
 logging.info(f"Loaded TENANTS: {TENANTS}")
 
+# Convert SMTP_PORT to an integer
 try:
     SMTP_PORT = int(SMTP_PORT)
 except ValueError:
@@ -114,8 +116,10 @@ def send_email_reminder(tenant):
         try:
             payment_amount = float(tenant['payment_amount'])
         except (ValueError, TypeError):
-            logging.error(f"Invalid payment_amount for tenant {tenant.get(
-                'name', 'Unknown')}: {tenant.get('payment_amount')}")
+            logging.error(
+                f"Invalid payment_amount for tenant {tenant.get('name', 'Unknown')}: {
+                    tenant.get('payment_amount')}"
+            )
             failure_count += 1
             failed_tenants.append({
                 "tenant": tenant.get("name", "Unknown"),
@@ -126,7 +130,7 @@ def send_email_reminder(tenant):
 
         subject = "Rent Payment Reminder"
 
-        # HTML content with embedded banner and clickable buttons
+        # HTML content with embedded banner and clickable button
         body = f"""\
         <html>
         <head>
@@ -149,8 +153,6 @@ def send_email_reminder(tenant):
                 If payment is not received by the 5th day of the month, a 10% late fee will be imposed.
             </p>
             <p>
-            <!-- Buttons Section -->
-            <p>
                 <a href="https://app.payrent.com/sign-in"
                    style="
                        display: inline-block;
@@ -165,8 +167,11 @@ def send_email_reminder(tenant):
                     Pay Now
                 </a>
             </p>
+            <p>
                 If you have any questions or need more information, please visit:
-                <a href="https://segundorentalservices.net/" style="color: #1a0dab; text-decoration: none;">https://segundorentalservices.net/</a>
+                <a href="https://segundorentalservices.net/" style="color: #1a0dab; text-decoration: none;">
+                    https://segundorentalservices.net/
+                </a>
             </p>
             <p>Thank you!<br><br>Have a great day!</p>
         </body>
@@ -219,7 +224,7 @@ def send_log_email():
     """
     try:
         subject = "Email Reminder Logs - Execution Summary"
-        body = f"""Hello,
+        body = """Hello,
 
 Please find attached the log file for the latest execution of the email reminder script.
 
