@@ -11,26 +11,25 @@ from dotenv import load_dotenv
 script_dir = os.path.dirname(os.path.abspath(__file__))
 log_file_path = os.path.join(script_dir, "email_reminder.log")
 
-# Configure Logging
+# Configure logging
 logging.basicConfig(
-    level=logging.INFO,  # Change to DEBUG for more detailed logs during troubleshooting
+    level=logging.INFO,  # Change to DEBUG for more details
     format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[
-        # Append mode to preserve existing logs
-        logging.FileHandler(log_file_path, mode='a'),
-        logging.StreamHandler()  # Logs to the console
+        logging.FileHandler(log_file_path, mode='a'),  # Append mode
+        logging.StreamHandler()                       # Logs to console
     ]
 )
 
 logging.info("Script started.")
 
-# IMPORTANT: Removed or commented out the line that clears all environment variables
+# Remove or comment out this line so GitHub Actions env vars aren't cleared:
 # os.environ.clear()
 
-# Load environment variables from .env file (only necessary if you're also using a local .env)
+# Load environment variables from a .env file (optional if also using GitHub Secrets)
 load_dotenv()
 
-# Retrieve SMTP server details from environment variables
+# Retrieve SMTP/Email details from environment
 SMTP_SERVER = os.getenv("SMTP_SERVER")
 SMTP_PORT = os.getenv("SMTP_PORT")
 EMAIL_ADDRESS = os.getenv("EMAIL_ADDRESS")
@@ -49,8 +48,8 @@ for var_name, var_value in [
     if not var_value:
         missing_smtp_vars.append(var_name)
 
-# Fixed syntax in the f-string below
 if missing_smtp_vars:
+    # Use a valid f-string without any masked `***`
     logging.error(f"Missing SMTP environment variables: {
                   ', '.join(missing_smtp_vars)}.")
     exit(1)
@@ -74,14 +73,14 @@ else:
 
 logging.info(f"Loaded TENANTS: {TENANTS}")
 
-# Convert SMTP_PORT to an integer
+# Convert SMTP_PORT to int
 try:
     SMTP_PORT = int(SMTP_PORT)
 except ValueError:
     logging.error(f"Invalid SMTP_PORT value: {SMTP_PORT}")
     exit(1)
 
-# Initialize counters and lists for tracking
+# Initialize counters
 success_count = 0
 failure_count = 0
 failed_tenants = []
@@ -90,13 +89,10 @@ failed_tenants = []
 def send_email_reminder(tenant):
     """
     Sends a rent payment reminder email to a single tenant.
-
-    Args:
-        tenant (dict): A dictionary containing tenant information.
     """
     global success_count, failure_count, failed_tenants
     try:
-        # Validate required tenant fields
+        # Validate required fields
         required_fields = ["email", "name",
                            "payment_amount", "payment_description"]
         missing_fields = [
@@ -112,7 +108,7 @@ def send_email_reminder(tenant):
             })
             return
 
-        # Ensure payment_amount is a float
+        # Ensure payment_amount can be converted to float
         try:
             payment_amount = float(tenant['payment_amount'])
         except (ValueError, TypeError):
@@ -130,12 +126,12 @@ def send_email_reminder(tenant):
 
         subject = "Rent Payment Reminder"
 
-        # HTML content with embedded banner and clickable button
+        # HTML body
         body = f"""\
         <html>
         <head>
             <style>
-                /* Fallback styles can be placed here */
+                /* Optional inline styles */
             </style>
         </head>
         <body>
@@ -178,7 +174,7 @@ def send_email_reminder(tenant):
         </html>
         """
 
-        # Create email message
+        # Create email
         msg = MIMEMultipart("alternative")
         msg["Subject"] = subject
         msg["From"] = EMAIL_ADDRESS
@@ -232,7 +228,6 @@ Best regards,
 Your Automated Email System
 """
 
-        # Create a multipart message
         msg = MIMEMultipart()
         msg["Subject"] = subject
         msg["From"] = EMAIL_ADDRESS
@@ -241,7 +236,7 @@ Your Automated Email System
         # Attach the body text
         msg.attach(MIMEText(body, "plain"))
 
-        # Attach the log file
+        # Attach the log file if it exists
         if os.path.isfile(log_file_path):
             with open(log_file_path, "rb") as log_file:
                 part = MIMEApplication(
